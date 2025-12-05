@@ -3,6 +3,8 @@ const state = {
   issues: [],
   assigneeSummary: {},
   chart: null,
+  assigneeChart: null,
+  selectedAssignee: null,
 };
 
 function toast(message) {
@@ -13,6 +15,12 @@ function getProjectIds() {
   const value = document.getElementById('project-ids').value;
   state.projectIds = value.split(',').map((v) => v.trim()).filter(Boolean).map(Number);
   return state.projectIds;
+}
+
+function toggleAssigneeFilter(name) {
+  state.selectedAssignee = state.selectedAssignee === name || !name ? null : name;
+  renderDashboard();
+  renderIssues();
 }
 
 async function saveConfig() {
@@ -84,7 +92,11 @@ function buildQueryParams() {
 function renderIssues() {
   const tbody = document.querySelector('#issue-table tbody');
   tbody.innerHTML = '';
-  state.issues.forEach((issue) => {
+  const filteredIssues = state.selectedAssignee
+    ? state.issues.filter((issue) => (issue.assignee || 'Unassigned') === state.selectedAssignee)
+    : state.issues;
+
+  filteredIssues.forEach((issue) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><input type="checkbox" data-id="${issue.id}"></td>
@@ -103,8 +115,8 @@ function renderIssues() {
       <td><a href="${issue.web_url}" target="_blank">열기</a></td>`;
     tbody.appendChild(tr);
   });
-  document.getElementById('assignee-summary').innerText =
-    Object.entries(state.assigneeSummary).map(([k, v]) => `${k}: ${v}건`).join(' / ');
+
+  document.getElementById('select-all').checked = false;
 }
 
 async function fetchIssues(applyFilter = false) {
@@ -123,6 +135,7 @@ async function fetchIssues(applyFilter = false) {
   state.issues = data.issues;
   state.assigneeSummary = data.assignee_summary;
   renderIssues();
+  renderDashboard();
 }
 
 async function refreshIssues() {
@@ -144,6 +157,7 @@ async function refreshIssues() {
   state.issues = data.issues;
   state.assigneeSummary = data.assignee_summary;
   renderIssues();
+  renderDashboard();
 }
 
 async function saveIssueFields(issueId) {
@@ -209,19 +223,108 @@ function renderCommitChart(stats) {
     grouped[row.author][row.week] = row;
   });
   const weeks = Array.from(new Set(stats.map((s) => s.week))).sort();
-  const datasets = Object.entries(grouped).map(([author, values]) => ({
+  const palette = ['#5b63ff', '#50a5f1', '#7c8cff', '#ff8fa3', '#3ecf8e', '#f6c344'];
+  const datasets = Object.entries(grouped).map(([author, values], idx) => ({
     label: author,
     data: weeks.map((w) => values[w]?.commits || 0),
     borderWidth: 2,
     fill: false,
+    tension: 0.35,
+    borderColor: palette[idx % palette.length],
+    backgroundColor: palette[idx % palette.length],
+    pointRadius: 4,
   }));
   const ctx = document.getElementById('commit-chart').getContext('2d');
   if (state.chart) state.chart.destroy();
   state.chart = new Chart(ctx, {
     type: 'line',
     data: { labels: weeks, datasets },
-    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom' } },
+      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+    }
   });
+}
+
+function renderAssigneeSummary() {
+  const container = document.getElementById('assignee-summary');
+  container.innerHTML = '';
+  const entries = Object.entries(state.assigneeSummary);
+  if (!entries.length) {
+    container.innerText = '담당자별 오픈 이슈가 없습니다.';
+    return;
+  }
+  entries.forEach(([name, count]) => {
+    const badge = document.createElement('span');
+    badge.dataset.assignee = name;
+    badge.textContent = `${name}: ${count}건`;
+    container.appendChild(badge);
+  });
+}
+
+function updateFilterLabel() {
+  const label = document.getElementById('assignee-filter-label');
+  if (state.selectedAssignee) {
+    const count = state.assigneeSummary[state.selectedAssignee] || 0;
+    label.textContent = `담당자: ${state.selectedAssignee} (${count}건)`;
+  } else {
+    label.textContent = '전체 담당자 보기';
+  }
+}
+
+function renderAssigneeChart() {
+  const labels = Object.keys(state.assigneeSummary);
+  const data = labels.map((name) => state.assigneeSummary[name]);
+  const ctx = document.getElementById('assignee-chart').getContext('2d');
+  if (state.assigneeChart) {
+    state.assigneeChart.destroy();
+    state.assigneeChart = null;
+  }
+  if (!labels.length) {
+    return;
+  }
+  state.assigneeChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: '오픈 이슈',
+          data,
+          backgroundColor: '#5b63ff',
+          borderRadius: 6,
+        },
+      ],
+    },
+    options: {
+      onClick: (_, elements) => {
+        if (elements.length) {
+          const assignee = labels[elements[0].index];
+          toggleAssigneeFilter(assignee);
+        }
+      },
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { stepSize: 1 },
+          grid: { color: '#eef0f7' },
+        },
+        x: { grid: { display: false } },
+      },
+    },
+  });
+}
+
+function renderDashboard() {
+  if (state.selectedAssignee && !(state.selectedAssignee in state.assigneeSummary)) {
+    state.selectedAssignee = null;
+  }
+  document.getElementById('open-issue-count').innerText = `오픈 이슈 ${state.issues.length}건`;
+  renderAssigneeSummary();
+  renderAssigneeChart();
+  updateFilterLabel();
 }
 
 function bindEvents() {
@@ -244,6 +347,13 @@ function bindEvents() {
       cb.checked = e.target.checked;
     });
   });
+  document.getElementById('assignee-summary').addEventListener('click', (e) => {
+    const assignee = e.target.dataset.assignee;
+    if (assignee) {
+      toggleAssigneeFilter(assignee);
+    }
+  });
+  document.getElementById('clear-assignee-filter').addEventListener('click', () => toggleAssigneeFilter(null));
   document.querySelector('#issue-table tbody').addEventListener('click', (e) => {
     const target = e.target;
     if (target.dataset.action === 'save-note') {
@@ -251,6 +361,23 @@ function bindEvents() {
       saveIssueFields(id);
     }
   });
+  document.querySelectorAll('.tab-button').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const targetId = e.currentTarget.dataset.target;
+      document.querySelectorAll('.tab-button').forEach((b) => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach((content) => content.classList.remove('active'));
+      e.currentTarget.classList.add('active');
+      document.getElementById(targetId).classList.add('active');
+      if (targetId === 'commits-tab') {
+        loadCommitStats();
+      }
+      if (targetId === 'issues-tab') {
+        renderDashboard();
+        renderIssues();
+      }
+    });
+  });
 }
 
 bindEvents();
+renderDashboard();
