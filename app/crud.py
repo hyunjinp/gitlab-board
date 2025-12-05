@@ -115,7 +115,7 @@ async def search_issues(
     category: Optional[str] = None,
     note: Optional[str] = None,
 ) -> Tuple[List[Issue], Dict[str, int]]:
-    stmt = select(Issue).where(Issue.project_id.in_(project_ids))
+    stmt = select(Issue).where(and_(Issue.project_id.in_(project_ids), Issue.state != "closed"))
     if query:
         like = f"%{query}%"
         stmt = stmt.where(
@@ -139,7 +139,7 @@ async def search_issues(
 
     summary_stmt = (
         select(Issue.assignee, func.count(Issue.id))
-        .where(Issue.project_id.in_(project_ids))
+        .where(and_(Issue.project_id.in_(project_ids), Issue.state != "closed"))
         .group_by(Issue.assignee)
     )
     summary_result = await session.execute(summary_stmt)
