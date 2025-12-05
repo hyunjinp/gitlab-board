@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitLab 대시보드</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header>
+    <h1>GitLab Issue & Commit Dashboard</h1>
+  </header>
+
+  <section class="card">
+    <h2>설정</h2>
+    <div class="form-grid">
+      <label>GitLab 서버 URL
+        <input type="text" id="server-url" placeholder="https://gitlab.example.com">
+      </label>
+      <label>Private Token
+        <input type="password" id="api-token" placeholder="토큰을 입력하세요">
+      </label>
+      <button id="save-config">저장</button>
+      <button id="load-config">불러오기</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>레포지토리 선택</h2>
+    <div class="form-grid">
+      <label>프로젝트 ID (쉼표로 구분)
+        <input type="text" id="project-ids" placeholder="123,456">
+      </label>
+      <button id="sync-repos">레포지토리 동기화</button>
+      <span id="repo-list"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-header">
+      <h2>이슈 현황</h2>
+      <div class="actions">
+        <button id="refresh-issues">새 이슈 가져오기</button>
+        <button id="close-selected">선택 이슈 일괄 Close</button>
+        <button id="export-issues">Excel 다운로드</button>
+      </div>
+    </div>
+    <div class="filters">
+      <input type="text" id="search-text" placeholder="제목/내용 검색">
+      <input type="text" id="search-author" placeholder="생성자">
+      <input type="text" id="search-assignee" placeholder="담당자">
+      <input type="text" id="search-label" placeholder="라벨">
+      <input type="text" id="search-category" placeholder="분류">
+      <input type="text" id="search-note" placeholder="비고">
+      <button id="apply-filter">검색</button>
+    </div>
+    <div id="assignee-summary" class="summary"></div>
+    <table id="issue-table">
+      <thead>
+        <tr>
+          <th><input type="checkbox" id="select-all"></th>
+          <th>프로젝트</th>
+          <th>IID</th>
+          <th>제목</th>
+          <th>생성자</th>
+          <th>담당자</th>
+          <th>라벨</th>
+          <th>상태</th>
+          <th>분류</th>
+          <th>비고</th>
+          <th>링크</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>커밋 현황 (주별)</h2>
+    <canvas id="commit-chart" height="140"></canvas>
+  </section>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
