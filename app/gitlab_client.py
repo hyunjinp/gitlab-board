@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 import httpx
@@ -9,6 +9,14 @@ class GitLabClient:
         self.base_url = base_url.rstrip("/")
         self.token = token
         self.headers = {"PRIVATE-TOKEN": token}
+
+    @staticmethod
+    def _format_datetime(value: datetime) -> str:
+        """Return an ISO-8601 string GitLab accepts for time filters."""
+
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.isoformat()
 
     async def _get(self, url: str, params: Optional[Dict] = None) -> httpx.Response:
         async with httpx.AsyncClient(headers=self.headers) as client:
@@ -63,11 +71,11 @@ class GitLabClient:
         url = f"{self.base_url}/api/v4/projects/{project_id}/repository/commits"
         params: Dict = {"per_page": page_size, "all": True}
         if since:
-            params["since"] = since.isoformat()
+            params["since"] = self._format_datetime(since)
         if until:
-            params["until"] = until.isoformat()
+            params["until"] = self._format_datetime(until)
         if with_stats:
-            params["stats"] = True
+            params["with_stats"] = True
         commits: List[Dict] = []
         page = 1
         while True:
