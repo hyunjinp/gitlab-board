@@ -30,6 +30,12 @@ class GitLabClient:
             response.raise_for_status()
             return response
 
+    async def _put(self, url: str, data: Optional[Dict] = None) -> httpx.Response:
+        async with httpx.AsyncClient(headers=self.headers) as client:
+            response = await client.put(url, data=data)
+            response.raise_for_status()
+            return response
+
     async def fetch_project(self, project_id: int) -> Dict:
         url = f"{self.base_url}/api/v4/projects/{project_id}"
         response = await self._get(url)
@@ -58,7 +64,7 @@ class GitLabClient:
 
     async def close_issue(self, project_id: int, issue_iid: int) -> None:
         url = f"{self.base_url}/api/v4/projects/{project_id}/issues/{issue_iid}"
-        await self._post(url, data={"state_event": "close"})
+        await self._put(url, data={"state_event": "close"})
 
     async def fetch_commits(
         self,
