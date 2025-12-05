@@ -12,7 +12,7 @@ class SettingRead(SettingCreate):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class RepositoryCreate(BaseModel):
@@ -25,7 +25,7 @@ class RepositoryRead(RepositoryCreate):
     last_issue_created_at: Optional[datetime]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class IssueUpdate(BaseModel):
@@ -51,7 +51,7 @@ class IssueRead(BaseModel):
     category: Optional[str]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class IssueSearchResponse(BaseModel):
