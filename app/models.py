@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.mysql import JSON
 from sqlalchemy.orm import relationship
 
@@ -29,7 +29,7 @@ class Issue(Base):
     __table_args__ = (UniqueConstraint("project_id", "iid", name="uniq_project_issue"),)
 
     id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, nullable=False)
+    project_id = Column(Integer, ForeignKey("repositories.id"), nullable=False)
     iid = Column(Integer, nullable=False)
     title = Column(String(255), nullable=False)
     description = Column(Text)
